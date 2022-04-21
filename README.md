@@ -1,5 +1,7 @@
-# realtime_trains_api
-api.rtt.io Home Assistant integration
+# octopus_intelligent
+Octopus Intelligent Home Assistant integration
+
+# TODO
 
 It provides detailed live train departures and journey stats:
 

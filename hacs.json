@@ -1,0 +1,7 @@
+{
+    "name": "Octopus Intelligent",
+    "render_readme": true,
+    "domains": ["button", "binary_sensor"],
+    "country": ["GB"],
+    "homeassistant": "2021.9.0"
+}

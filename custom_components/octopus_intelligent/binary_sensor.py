@@ -23,12 +23,12 @@ class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
         self._octopus_system = octopus_system
         
         self._attributes = {}
-        self._is_on = self._octopus_system.is_off_peak_time()
+        self._is_on = self._octopus_system.is_off_peak_time() or self._octopus_system.is_off_peak_charging_now()
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._is_on = self._octopus_system.is_off_peak_time() or self._octopus_system.is_charging_now()
+        self._is_on = self._octopus_system.is_off_peak_time() or self._octopus_system.is_off_peak_charging_now()
         self._attributes = self.coordinator.data
         self.async_write_ha_state()
 
@@ -60,12 +60,11 @@ class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
             },
             "name": "Octopus Intelligent Tariff",
             "manufacturer": "Octopus",
-        }
-    # @property
-    # def should_poll(self) -> bool:
-    #     """No polling needed for a sensor."""
-    #     return False
-
+        }        
+    @property
+    def icon(self):
+        """Icon of the entity."""
+        return "mdi:home-lightning-bolt-outline"
     # @property
     # def device_class(self):
     #     """Return the class of this device, from component DEVICE_CLASSES."""

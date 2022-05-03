@@ -41,11 +41,18 @@ class OctopusEnergyGraphQLClient:
     """Triggers a boost charge for the given account"""
     return await self.__async_execute_with_session(lambda session: self.__async_trigger_boost_charge(session, account_id))
     
-        
   async def async_cancel_boost_charge(self, account_id: str):
     """Cancels the boost charge for the given account"""
     return await self.__async_execute_with_session(lambda session: self.__async_cancel_boost_charge(session, account_id))
 
+
+  async def async_suspend_smart_charging(self, account_id: str):
+    """Suspends smart charging for the given account"""
+    return await self.__async_execute_with_session(lambda session: self.__async_suspend_smart_charging(session, account_id))
+
+  async def async_resume_smart_charging(self, account_id: str):
+    """Resumes smart charging for the given account"""
+    return await self.__async_execute_with_session(lambda session: self.__async_resume_smart_charging(session, account_id))
 
   async def async_get_device_info(self, account_id: str):
     """Gets the device info for the given account"""
@@ -290,5 +297,43 @@ class OctopusEnergyGraphQLClient:
     result = await session.execute(query, variable_values=params, operation_name="getCombinedData")
     return result
 
+
+
+  async def __async_suspend_smart_charging(self, session, account_id: str):
+    """Suspends smart charging for the given account"""
+    # Execute single query
+    query = gql(
+    '''      
+      mutation suspendControl($accountNumber: String!) {
+        suspendControl(input: { accountNumber: $accountNumber }) {
+          krakenflexDevice {
+            krakenflexDeviceId
+          }
+        }
+      }
+    ''')
+
+    params = {"accountNumber": account_id}
+    result = await session.execute(query, variable_values=params, operation_name="suspendControl")
+    return result['suspendControl']
+
+
+  async def __async_resume_smart_charging(self, session, account_id: str):
+    """Resumes smart charging for the given account"""
+    # Execute single query
+    query = gql(
+    '''      
+      mutation resumeControl($accountNumber: String!) {
+        resumeControl(input: { accountNumber: $accountNumber }) {
+          krakenflexDevice {
+            krakenflexDeviceId
+          }
+        }
+      }
+    ''')
+
+    params = {"accountNumber": account_id}
+    result = await session.execute(query, variable_values=params, operation_name="resumeControl")
+    return result['resumeControl']
 
 

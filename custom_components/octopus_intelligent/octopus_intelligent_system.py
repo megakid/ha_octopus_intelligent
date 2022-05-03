@@ -3,6 +3,7 @@ from datetime import timedelta, datetime
 import logging
 import async_timeout
 
+from homeassistant.core import callback
 import homeassistant.util.dt as dt_util
 
 from homeassistant.helpers.event import (
@@ -37,8 +38,13 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         
         self.client = OctopusEnergyGraphQLClient(self._api_key)
 
-        async_track_utc_time_change(
+        self._timer = async_track_utc_time_change(
             hass, self.async_refresh, minute=range(0, 60, 30), second=5)
+
+    @callback
+    async def timer_update(self, time):
+        """Refresh data when timer is fired."""
+        await self.async_request_refresh()
 
     @property
     def account_id(self):
@@ -62,13 +68,27 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         except Exception as err:
             raise UpdateFailed(f"Error communicating with Octopus GraphQL API: {err}")
 
-    def is_charging_now(self):
+    def is_smart_charging_enabled(self):
+        return not self.data.get('registeredKrakenflexDevice', {}).get('suspended', False)
+    async def async_suspend_smart_charging(self):
+        await self.client.async_suspend_smart_charging(self._account_id)
+    async def async_resume_smart_charging(self):
+        await self.client.async_resume_smart_charging(self._account_id)
+
+    def is_boost_charging_now(self):
+        return self.is_charging_now('bump-charge')
+
+    def is_off_peak_charging_now(self):
+        return self.is_charging_now('smart-charge')
+
+    def is_charging_now(self, source = None):
         utcnow = dt_util.utcnow()
         for state in self.data.get('plannedDispatches', []):
-            startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z')
-            endUtc = datetime.strptime(state.get('endDtUtc'), '%Y-%m-%d %H:%M:%S%z')
-            if startUtc <= utcnow <= endUtc:
-                return True
+            if source is None or state.get('meta', {}).get('source', '') == source:
+                startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z')
+                endUtc = datetime.strptime(state.get('endDtUtc'), '%Y-%m-%d %H:%M:%S%z')
+                if startUtc <= utcnow <= endUtc:
+                    return True
         return False
 
     def is_off_peak_time(self):
@@ -119,6 +139,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         except Exception as ex:
             _LOGGER.error(f"Authentication failed : {ex.message}. You may need to check your token or create a new app in the gardena api and use the new token.")
 
-    # async def stop(self):
-    #     _LOGGER.debug("Stopping OctopusIntelligentSystem")
-    #     # self.smart_system.quit()
+    async def stop(self):
+        _LOGGER.debug("Stopping OctopusIntelligentSystem")
+        if (self._timer is not None):
+            self._timer()

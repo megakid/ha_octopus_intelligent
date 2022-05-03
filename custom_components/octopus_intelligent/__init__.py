@@ -23,7 +23,7 @@ from .util import to_timedelta
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["button", "binary_sensor", "select"]
+PLATFORMS = ["switch", "binary_sensor", "select"]
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Octopus Intelligent System integration."""

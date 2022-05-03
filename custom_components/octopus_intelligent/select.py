@@ -65,6 +65,9 @@ class OctopusIntelligentTargetSoc(CoordinatorEntity, SelectEntity):
         """Change the selected option."""
         selectedTargetSoc = int(option.replace("%", ""))
         await self._octopus_system.async_set_target_soc(selectedTargetSoc)
+        self._current_option = option
+        self.async_write_ha_state()
+        
 
     @property
     def available(self) -> bool:
@@ -145,6 +148,8 @@ class OctopusIntelligentTargetTime(CoordinatorEntity, SelectEntity):
         """Change the selected option."""
         selectedTargetTime = option
         await self._octopus_system.async_set_target_time(selectedTargetTime)
+        self._current_option = selectedTargetTime
+        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:

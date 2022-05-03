@@ -14,8 +14,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
       CancelBoostCharge(hass.data[DOMAIN][config_entry.entry_id][OCTOPUS_SYSTEM])], 
     True)
 
-
-
 class StartBoostCharge(CoordinatorEntity,ButtonEntity):
     """Representation of a boost charge button."""
 

@@ -1,7 +1,5 @@
 import logging
-import json
 import math
-import aiohttp
 
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport

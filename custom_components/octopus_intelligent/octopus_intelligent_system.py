@@ -3,12 +3,8 @@ from datetime import timedelta, datetime
 import logging
 import async_timeout
 
-from homeassistant.core import callback
 import homeassistant.util.dt as dt_util
 
-from homeassistant.helpers.event import (
-    async_track_utc_time_change
-)
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -38,13 +34,6 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         
         self.client = OctopusEnergyGraphQLClient(self._api_key)
 
-        self._timer = async_track_utc_time_change(
-            hass, self.async_refresh, minute=range(0, 60, 30), second=5)
-
-    @callback
-    async def timer_update(self, time):
-        """Refresh data when timer is fired."""
-        await self.async_request_refresh()
 
     @property
     def account_id(self):
@@ -141,5 +130,3 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
 
     async def stop(self):
         _LOGGER.debug("Stopping OctopusIntelligentSystem")
-        if (self._timer is not None):
-            self._timer()

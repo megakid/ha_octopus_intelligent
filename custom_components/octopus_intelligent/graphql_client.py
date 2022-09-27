@@ -290,6 +290,15 @@ class OctopusEnergyGraphQLClient:
                     location
                 }
             }
+            completedDispatches(accountNumber: $accountNumber) {
+                startDtUtc: startDt
+                endDtUtc: endDt
+                chargeKwh: delta
+                meta { 
+                    source
+                    location
+                }
+            }
         }
     ''')
 

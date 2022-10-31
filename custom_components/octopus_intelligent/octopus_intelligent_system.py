@@ -67,11 +67,11 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     def is_boost_charging_now(self):
         return self.is_charging_now('bump-charge')
 
-    def is_off_peak_charging_now(self):
-        return self.is_charging_now('smart-charge')
+    def is_off_peak_charging_now(self, minutes_offset: int = 0):
+        return self.is_charging_now('smart-charge', minutes_offset=minutes_offset)
 
-    def is_charging_now(self, source = None):
-        utcnow = dt_util.utcnow()
+    def is_charging_now(self, source = None, minutes_offset: int = 0):
+        utcnow = dt_util.utcnow() + timedelta(minutes=minutes_offset)
         for state in self.data.get('plannedDispatches', []):
             if source is None or state.get('meta', {}).get('source', '') == source:
                 startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z')
@@ -80,8 +80,8 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
                     return True
         return False
 
-    def is_off_peak_time(self):
-        now = dt_util.now()
+    def is_off_peak_time_now(self, minutes_offset: int = 0):
+        now = dt_util.now() + timedelta(minutes=minutes_offset)
         offpeak_start_mins = self._off_peak_start.seconds // 60
         offpeak_end_mins = self._off_peak_end.seconds // 60
         now_mins = now.hour * 60 + now.minute
@@ -89,6 +89,9 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
             return now_mins >= offpeak_start_mins or now_mins <= offpeak_end_mins
         else:
             return now_mins >= offpeak_start_mins and now_mins <= offpeak_end_mins
+
+    def is_off_peak_now(self, minutes_offset: int = 0):
+        return self.is_off_peak_time_now(minutes_offset) or self.is_charging_now('smart-charge', minutes_offset)
 
     def get_target_soc(self):
         return self.data.get('vehicleChargingPreferences', {}).get('weekdayTargetSoc', None)

@@ -3,13 +3,19 @@ Octopus Intelligent Home Assistant integration
 
 * `binary_sensor.octopus_intelligent_slot` - will be `on` when your electricity is cheap. This includes when your car is charging outside of the normal Octopus Intelligent offpeak times but NOT when bump charging (unless within off peak hours)
 
+* `binary_sensor.octopus_intelligent_planned_dispatch_slot` - will be `on` when Octopus plans to charge your car. This includes when your car is charging outside of the normal Octopus Intelligent offpeak times but NOT when bump charging.  Your electricity might be offpeak when this sensor reports "off" (e.g. during the overnight 6 hours)
+
+* `binary_sensor.octopus_intelligent_slot_next_1_hour` - will be `on` when your electricity is cheap for the next 1 hour.
+* `binary_sensor.octopus_intelligent_slot_next_2_hours` - will be `on` when your electricity is cheap for the next 2 hours.
+* `binary_sensor.octopus_intelligent_slot_next_3_hours` - will be `on` when your electricity is cheap for the next 3 hours.
+
 NOTE: It has come to my attention that, when outside core offpeak hours (2330 -> 0530), if your car does not successfully charge during the planned slots then your usage will be billed at peak pricing.  This means that if charging is unreliable then the sensor won't reflect your billing accurately.
 
 * `switch.octopus_intelligent_bump_charge` and `switch.octopus_intelligent_smart_charging` - controls your Octopus Intelligent bump charge and smart charge settings
 
 * `select.octopus_intelligent_target_time` and `select.octopus_intelligent_target_soc` - controls your Octopus Intelligent target ready time and SoC %.
 
-<img width="850" alt="image" src="https://user-images.githubusercontent.com/1478003/166564194-c7d9f4a6-31af-42d6-9ccc-a8b81324385d.png">
+![image](https://user-images.githubusercontent.com/1478003/208247955-41b9bf37-4599-4d61-83b1-0cd97611a60e.png)
 
 # Guide
 

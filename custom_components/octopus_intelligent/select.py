@@ -29,13 +29,14 @@ class OctopusIntelligentTargetSoc(CoordinatorEntity, SelectEntity):
         self._octopus_system = octopus_system
 
         self._current_option = None
-        self._options = list(map(lambda x: f"{x}%", INTELLIGENT_SOC_OPTIONS))
+        self._options = list(map(lambda x: f"{x}", INTELLIGENT_SOC_OPTIONS))
 
     @callback
+    
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         targetSoc = self._octopus_system.get_target_soc()
-        self._current_option = f"{targetSoc}%"
+        self._current_option = f"{targetSoc}"
         self.async_write_ha_state()
 
     @property

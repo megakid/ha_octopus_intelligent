@@ -50,15 +50,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     except Exception as ex:
         _LOGGER.error("Got error when setting up Octopus Intelligent Integration: %s", ex)
         return False
-    # except AccessDeniedError as ex:
-    #     _LOGGER.error("Got Access Denied Error when setting up Gardena Smart System: %s", ex)
-    #     return False
-    # except InvalidClientError as ex:
-    #     _LOGGER.error("Got Invalid Client Error when setting up Gardena Smart System: %s", ex)
-    #     return False
-    # except MissingTokenError as ex:
-    #     _LOGGER.error("Got Missing Token Error when setting up Gardena Smart System: %s", ex)
-    #     return False
 
     if entry.entry_id not in hass.data[DOMAIN]:
         hass.data[DOMAIN][entry.entry_id] = {}

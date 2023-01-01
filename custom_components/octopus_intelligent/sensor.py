@@ -39,11 +39,17 @@ class OctopusIntelligentNextOffpeakTime(CoordinatorEntity, SensorEntity):
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
         
         self._attributes = {}
-        self._set_native_value()
+        self._native_value = None
+        self._set_native_value(log_on_error=False)
 
-    def _set_native_value(self):
-        self._native_value = self._octopus_system.next_offpeak_start_utc()
-        return True
+    def _set_native_value(self, log_on_error = True):
+        try:
+            self._native_value = self._octopus_system.next_offpeak_start_utc()
+            return True
+        except:
+            if log_on_error:
+                _LOGGER.exception("Could not set native_value")
+        return False
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -111,15 +117,20 @@ class OctopusIntelligentOffpeakEndTime(CoordinatorEntity, SensorEntity):
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
         
         self._attributes = {}
-        self._set_native_value()
+        self._native_value = None
+        self._set_native_value(log_on_error=False)
 
-    def _set_native_value(self):
+    def _set_native_value(self, log_on_error = True):
         utcnow = dt_util.utcnow()
         offpeak_range = self._octopus_system.next_offpeak_range_utc()
         # Only update if we're in an offpeak window now
         if offpeak_range["start"] <= utcnow:
-            self._native_value = offpeak_range["end"]
-            return True
+            try:
+                self._native_value = offpeak_range["end"]
+                return True
+            except:
+                if log_on_error:
+                    _LOGGER.exception("Could not set native_value")
         return False
 
     @callback

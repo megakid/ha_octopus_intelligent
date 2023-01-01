@@ -1,5 +1,5 @@
 """Support for Octopus Intelligent Tariff in the UK."""
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 import logging
 import async_timeout
 
@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .graphql_client import OctopusEnergyGraphQLClient
-from .util import to_hours_after_midnight
+from .util import *
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,12 +70,62 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     def is_off_peak_charging_now(self, minutes_offset: int = 0):
         return self.is_charging_now('smart-charge', minutes_offset=minutes_offset)
 
+    def next_offpeak_start_utc(self, minutes_offset: int = 0):
+        offpeak_range = self.next_offpeak_range_utc(minutes_offset=minutes_offset)
+        return offpeak_range["start"] if offpeak_range is not None else None
+
+    def next_offpeak_end_utc(self, minutes_offset: int = 0):
+        offpeak_range = self.next_offpeak_range_utc(minutes_offset=minutes_offset)
+        return offpeak_range["end"] if offpeak_range is not None else None
+
+    def next_offpeak_range_utc(self, minutes_offset: int = 0):
+        utcnow = dt_util.utcnow() + timedelta(minutes=minutes_offset)
+        localdate = dt_util.start_of_local_day(dt_util.as_local(utcnow))
+        fixed_start_b1 = dt_util.as_utc(localdate - timedelta(days=1) + self._off_peak_start)
+        fixed_end_b1 = dt_util.as_utc(localdate - timedelta(days=1) + self._off_peak_end)
+        fixed_start_0 = dt_util.as_utc(localdate + self._off_peak_start)
+        fixed_end_0 = dt_util.as_utc(localdate + self._off_peak_end)
+        fixed_start_a1 = dt_util.as_utc(localdate + timedelta(days=1) + self._off_peak_start)
+        fixed_end_a1 = dt_util.as_utc(localdate + timedelta(days=1) + self._off_peak_end)
+        #fixed_start_a2 = dt_util.as_utc(localdate + timedelta(days=2) + self._off_peak_start)
+        fixed_end_a2 = dt_util.as_utc(localdate + timedelta(days=2) + self._off_peak_end)
+
+        if fixed_start_b1 > fixed_end_b1:
+            all_offpeak_ranges = [
+                {"start": fixed_start_b1, "end": fixed_end_0},
+                {"start": fixed_start_0, "end": fixed_end_a1},
+                {"start": fixed_start_a1, "end": fixed_end_a2}
+            ]
+        else:
+            all_offpeak_ranges = [
+                {"start": fixed_start_b1, "end": fixed_end_b1},
+                {"start": fixed_start_0, "end": fixed_end_0},
+                {"start": fixed_start_a1, "end": fixed_end_a1},
+            ]
+
+        for state in self.data.get('plannedDispatches', []):
+            if state.get('meta', {}).get('source', '') == 'smart-charge':
+                startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
+                endUtc = datetime.strptime(state.get('endDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
+                all_offpeak_ranges.append({"start": startUtc, "end": endUtc})
+
+        # merge overlapping ones:
+        offpeak_ranges = merge_and_sort_time_ranges(all_offpeak_ranges)
+
+        for offpeak_range in offpeak_ranges:
+            startUtc = offpeak_range["start"]
+            endUtc = offpeak_range["end"]
+            if startUtc <= utcnow <= endUtc or utcnow <= startUtc:
+                return offpeak_range
+        return None
+
+
     def is_charging_now(self, source = None, minutes_offset: int = 0):
         utcnow = dt_util.utcnow() + timedelta(minutes=minutes_offset)
         for state in self.data.get('plannedDispatches', []):
             if source is None or state.get('meta', {}).get('source', '') == source:
-                startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z')
-                endUtc = datetime.strptime(state.get('endDtUtc'), '%Y-%m-%d %H:%M:%S%z')
+                startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
+                endUtc = datetime.strptime(state.get('endDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
                 if startUtc <= utcnow <= endUtc:
                     return True
         return False
@@ -88,7 +138,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         if (offpeak_end_mins < offpeak_start_mins):
             return now_mins >= offpeak_start_mins or now_mins <= offpeak_end_mins
         else:
-            return now_mins >= offpeak_start_mins and now_mins <= offpeak_end_mins
+            return offpeak_start_mins <= now_mins <= offpeak_end_mins
 
     def is_off_peak_now(self, minutes_offset: int = 0):
         return self.is_off_peak_time_now(minutes_offset) or self.is_charging_now('smart-charge', minutes_offset)

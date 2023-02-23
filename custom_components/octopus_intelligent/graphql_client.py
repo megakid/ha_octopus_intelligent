@@ -135,7 +135,7 @@ class OctopusEnergyGraphQLClient:
     # get hours
     readyByHoursAfterMidnightHours = int(readyByHoursAfterMidnight)
     # get mins - rounded to nearest 30 mins
-    readyByHoursAfterMidnightMinutes = round(30 * (readyByHoursAfterMidnight % 0.5))
+    readyByHoursAfterMidnightMinutes = round(60 * (readyByHoursAfterMidnight % 1))
 
     targetTime = f"{readyByHoursAfterMidnightHours:02}:{readyByHoursAfterMidnightMinutes:02}"
 

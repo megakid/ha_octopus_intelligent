@@ -50,7 +50,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, hass, octopus_system, name : str, store_attributes : bool = False, look_ahead_mins : int = 0) -> None:
         """Initialize the binary sensor."""
-        super().__init__(octopus_system)
         self._name = name
         self._unique_id = slugify(name)
         self._octopus_system = octopus_system
@@ -61,6 +60,7 @@ class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
         
         self._attributes = {}
         self._is_on = self._is_off_peak()
+        super().__init__(octopus_system)
 
     def _is_off_peak(self):
         mins_looked = 0
@@ -126,7 +126,6 @@ class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
 class OctopusIntelligentPlannedDispatchSlot(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, hass, octopus_system, name : str) -> None:
         """Initialize the binary sensor."""
-        super().__init__(octopus_system)
         self._name = name
         self._unique_id = slugify(name)
         self._octopus_system = octopus_system
@@ -135,6 +134,7 @@ class OctopusIntelligentPlannedDispatchSlot(CoordinatorEntity, BinarySensorEntit
         
         self._attributes = {}
         self._is_on = self._octopus_system.is_off_peak_charging_now()
+        super().__init__(octopus_system)
 
     @callback
     def _handle_coordinator_update(self) -> None:

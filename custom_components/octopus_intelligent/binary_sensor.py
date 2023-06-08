@@ -55,12 +55,12 @@ class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
         self._octopus_system = octopus_system
         self._store_attributes = store_attributes
         self._look_ahead_mins = look_ahead_mins
-        self._timer = async_track_utc_time_change(
-            hass, self.timer_update, minute=range(0, 60, 30), second=1)
-        
         self._attributes = {}
         self._is_on = self._is_off_peak()
+        
         super().__init__(octopus_system)
+        self._timer = async_track_utc_time_change(
+            hass, self.timer_update, minute=range(0, 60, 30), second=1)
 
     def _is_off_peak(self):
         mins_looked = 0
@@ -129,13 +129,13 @@ class OctopusIntelligentPlannedDispatchSlot(CoordinatorEntity, BinarySensorEntit
         self._name = name
         self._unique_id = slugify(name)
         self._octopus_system = octopus_system
+        self._attributes = {}
+        self._is_on = self._octopus_system.is_off_peak_charging_now()
+        
+        super().__init__(octopus_system)
         self._timer = async_track_utc_time_change(
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
         
-        self._attributes = {}
-        self._is_on = self._octopus_system.is_off_peak_charging_now()
-        super().__init__(octopus_system)
-
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""

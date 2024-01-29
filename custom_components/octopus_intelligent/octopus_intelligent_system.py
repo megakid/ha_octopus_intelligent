@@ -23,7 +23,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Octopus Intelligent",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=300),
+            update_interval=timedelta(seconds=120),
         )
         self._hass = hass
         self._api_key = api_key
@@ -48,7 +48,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         try:
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
-            async with async_timeout.timeout(30):
+            async with async_timeout.timeout(60):
                 return await self.client.async_get_combined_state(self._account_id)
         # except ApiAuthError as err:
         #     # Raising ConfigEntryAuthFailed will cancel future updates

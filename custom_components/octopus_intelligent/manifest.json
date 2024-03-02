@@ -7,5 +7,5 @@
   "codeowners": ["@megakid"],
   "iot_class": "cloud_polling",
   "config_flow": true,
-  "requirements": ["gql==3.2.0"]
+  "requirements": ["gql~=3.5.0"]
 }

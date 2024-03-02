@@ -11,6 +11,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .graphql_client import OctopusEnergyGraphQLClient
+from .graphql_util import validate_octopus_account
 from .util import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -173,13 +174,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
 
     async def start(self):
         _LOGGER.debug("Starting OctopusIntelligentSystem")
-        try:
-            accounts = await self.client.async_get_accounts()
-            if (self._account_id not in accounts):
-                _LOGGER.error(f"Account {self._account_id} not found in accounts {accounts}")
-                raise Exception(f"Account {self._account_id} not found in accounts {accounts}")
-        except Exception as ex:
-            _LOGGER.error(f"Authentication failed : {ex.message}. You may need to check your token or create a new app in the gardena api and use the new token.")
+        await validate_octopus_account(self.client, self._account_id)
 
     async def stop(self):
         _LOGGER.debug("Stopping OctopusIntelligentSystem")

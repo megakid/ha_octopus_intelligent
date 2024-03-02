@@ -17,7 +17,7 @@ class OctopusEnergyGraphQLClient:
     self._login_attempt = 0
     self._session = None
 
-  async def async_get_accounts(self):
+  async def async_get_accounts(self) -> list[str]:
     """Gets the accounts for the given API key"""
     return await self.__async_execute_with_session(self.__async_get_accounts)
 

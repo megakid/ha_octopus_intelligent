@@ -23,6 +23,7 @@ from .const import (
     CONF_OFFPEAK_END_DEFAULT,
     INTELLIGENT_24HR_TIMES
 )
+from .graphql_util import InvalidAuthError, validate_octopus_account
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class OctopusIntelligentConfigFlowHandler(config_entries.ConfigFlow, domain=DOMA
 
     async def _show_setup_form(self, errors=None):
         """Show the setup form to the user."""
-        errors = {}
+        errors = errors or {}
 
         fields = OrderedDict()
         fields[vol.Required(CONF_API_KEY)] = str
@@ -59,9 +60,12 @@ class OctopusIntelligentConfigFlowHandler(config_entries.ConfigFlow, domain=DOMA
         errors = {}
         try:
             await try_connection(user_input[CONF_API_KEY], user_input[CONF_ACCOUNT_ID])
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.exception("Unexpected exception")
-            errors["base"] = "unknown"
+        except Exception as ex:  # pylint: disable=broad-except
+            _LOGGER.error(ex)
+            if isinstance(ex, InvalidAuthError):
+                errors["base"] = "invalid_auth"
+            else:
+                errors["base"] = "unknown"
             return await self._show_setup_form(errors)
 
         unique_id = user_input[CONF_ACCOUNT_ID]
@@ -118,18 +122,9 @@ class OctopusIntelligentConfigFlowHandler(config_entries.ConfigFlow, domain=DOMA
 #         return self.async_show_form(step_id="user", data_schema=vol.Schema(fields), errors=errors)
 
 
-async def try_connection(api_key, account_id):
+async def try_connection(api_key: str, account_id: str):
+    """Try connecting to the Octopus API and validating the given account_id."""
     _LOGGER.debug("Trying to connect to Octopus during setup")
     client = OctopusEnergyGraphQLClient(api_key)
-    try:
-        accounts = await client.async_get_accounts()
-        if (account_id not in accounts):
-            _LOGGER.error(f"Account {account_id} not found in accounts {accounts}")
-            raise Exception(f"Account {account_id} not found in accounts {accounts}")
-    except Exception as ex:
-        _LOGGER.error(f"Authentication failed : {ex.message}. You may need to check your token or create a new app in the gardena api and use the new token.")
-
-    # smart_system = SmartSystem(email=email, password=password, client_id=client_id)
-    # smart_system.authenticate()
-    # smart_system.update_locations()
+    await validate_octopus_account(client, account_id)
     _LOGGER.debug("Successfully connected to Octopus during setup")

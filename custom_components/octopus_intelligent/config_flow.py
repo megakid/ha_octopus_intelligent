@@ -58,10 +58,7 @@ class OctopusIntelligentConfigFlowHandler(config_entries.ConfigFlow, domain=DOMA
 
         errors = {}
         try:
-            await self.hass.async_add_executor_job(
-                try_connection,
-                user_input[CONF_API_KEY],
-                user_input[CONF_ACCOUNT_ID])
+            await try_connection(user_input[CONF_API_KEY], user_input[CONF_ACCOUNT_ID])
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"

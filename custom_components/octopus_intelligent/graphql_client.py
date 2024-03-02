@@ -191,7 +191,7 @@ class OctopusEnergyGraphQLClient:
     result = await session.execute(query, variable_values=params, operation_name="deleteBoostCharge")
     return result['deleteBoostCharge']
 
-  async def __async_get_accounts(session):
+  async def __async_get_accounts(self, session):
     # Execute single query
     query = gql(
     '''

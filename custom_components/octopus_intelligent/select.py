@@ -5,19 +5,26 @@ from homeassistant.const import (
 from homeassistant.components.select import (
     SelectEntity,
 )
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
 from .const import DOMAIN, OCTOPUS_SYSTEM, INTELLIGENT_SOC_OPTIONS, INTELLIGENT_CHARGE_TIMES
-from homeassistant.core import callback
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback, HomeAssistant
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
     async_add_entities([
       OctopusIntelligentTargetSoc(hass.data[DOMAIN][config_entry.entry_id][OCTOPUS_SYSTEM]),
       OctopusIntelligentTargetTime(hass.data[DOMAIN][config_entry.entry_id][OCTOPUS_SYSTEM])], 
-    True)
+    False)  # False: data was already fetched by __init__.py async_setup_entry()
 
 
 class OctopusIntelligentTargetSoc(CoordinatorEntity, SelectEntity):

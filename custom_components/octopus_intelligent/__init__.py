@@ -60,9 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     #hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, lambda event: octopus_system.stop())
 
-    for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component))
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _LOGGER.debug("Octopus Intelligent System component setup finished")
     return True

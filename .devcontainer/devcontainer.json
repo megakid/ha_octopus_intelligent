@@ -1,0 +1,26 @@
+// Documentation: https://containers.dev/implementors/json_reference/
+{
+	"name": "megakid's Octopus Intelligent",
+	"appPort": [ "8123:8123" ],
+	"build": {
+		"args": { "HASS_VERSION": "latest" },
+		"dockerfile": "Dockerfile"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.pylint",
+				"ms-python.black-formatter",
+				"eamodio.gitlens"
+			],
+			"settings": {
+				"python.analysis.extraPaths": ["/usr/src/homeassistant"],
+				"terminal.integrated.defaultProfile.linux": "bash", 
+				"terminal.integrated.profiles.linux": {
+					"bash": { "path": "/bin/bash" }
+				}
+			}
+		}
+	}
+}

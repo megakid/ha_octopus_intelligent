@@ -46,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
 
     try:
-        await hass.async_add_executor_job(octopus_system.start)
+        await octopus_system.start()
     except Exception as ex:
         _LOGGER.error("Got error when setting up Octopus Intelligent Integration: %s", ex)
         return False

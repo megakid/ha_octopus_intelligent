@@ -1,5 +1,6 @@
 """Support for Octopus Intelligent Tariff in the UK."""
 from datetime import timedelta, datetime, timezone
+from typing import Any, override
 import asyncio
 import logging
 
@@ -12,6 +13,7 @@ from homeassistant.helpers.update_coordinator import (
 
 from .graphql_client import OctopusEnergyGraphQLClient
 from .graphql_util import validate_octopus_account
+from .persistent_data import PersistentData, PersistentDataStore
 from .util import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,29 +36,99 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         self._off_peak_end = off_peak_end
         
         self.client = OctopusEnergyGraphQLClient(self._api_key)
-
+        self._persistent_data = PersistentData()
+        self._store = PersistentDataStore(self._persistent_data, hass, account_id)
 
     @property
     def account_id(self):
         return self._account_id
 
-    async def _async_update_data(self):
+    @override
+    async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API endpoint.
 
         This is the place to pre-process the data to lookup tables
         so entities can quickly look up their data.
+
+        Returns:
+            dict: The data received from the Octopus API, for example:
+            {
+                'completedDispatches': [{
+                    'chargeKwh': '-0.58',
+                    'startDtUtc': '2024-02-25 02:00:00+00:00',
+                    'endDtUtc': '2024-02-25 02:30:00+00:00',
+                    'meta': {'location': 'AT_HOME', 'source': None},
+                }, {
+                    'chargeKwh': '-0.58',
+                    'startDtUtc': '2024-02-25 03:30:00+00:00',
+                    'endDtUtc': '2024-02-25 04:00:00+00:00',
+                    'meta': {'location': 'AT_HOME', 'source': None},
+                }],
+                'plannedDispatches': [{
+                    'chargeKwh': '-0.67',
+                    'startDtUtc': '2024-02-25 23:30:00+00:00',
+                    'endDtUtc': '2024-02-26 00:00:00+00:00',
+                    'meta': {'location': None, 'source': 'smart-charge'},
+                }, {
+                    'chargeKwh': '-1.12',
+                    'startDtUtc': '2024-02-26 03:00:00+00:00',
+                    'endDtUtc': '2024-02-26 04:00:00+00:00',
+                    'meta': {'location': None, 'source': 'smart-charge'},
+                }],
+                'vehicleChargingPreferences': {
+                    'weekdayTargetSoc': 80,
+                    'weekdayTargetTime': '08:00',
+                    'weekendTargetSoc': 80,
+                    'weekendTargetTime': '08:00',
+                },
+                'registeredKrakenflexDevice': { ... },
+            }
         """
         try:
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
             async with asyncio.timeout(90):
-                return await self.client.async_get_combined_state(self._account_id)
+                data = await self.client.async_get_combined_state(self._account_id)
+                self._update_planned_dispatch_sources(data)
+                return data
         # except ApiAuthError as err:
         #     # Raising ConfigEntryAuthFailed will cancel future updates
         #     # and start a config flow with SOURCE_REAUTH (async_step_reauth)
         #     raise ConfigEntryAuthFailed from err
         except Exception as err:
             raise UpdateFailed(f"Error communicating with Octopus GraphQL API: {err}")
+
+    def _update_planned_dispatch_sources(self, data):
+        """Workaround for issue #35: missing dispatch sources in Octopus API response."""
+        dispatches = (data or {}).get("plannedDispatches", [])
+        all_sources = [disp.get("meta", {}).get("source", "") for disp in dispatches]
+        good_sources: set[str] = {src for src in all_sources if src}
+        if good_sources:
+            if len(good_sources) > 1:
+                _LOGGER.warning(
+                    "Unexpected mix of planned dispatch sources: %s", good_sources
+                )
+                # We don't expect to see a mix of non-None sources like 'bump-charge'
+                # and 'smart-charge' in the same planned dispatch list, but if that
+                # happens, play safe and avoid assuming the wrong source.
+                self._persistent_data.last_seen_planned_dispatch_source = ""
+            else:
+                self._persistent_data.last_seen_planned_dispatch_source = next(
+                    iter(good_sources)
+                )
+
+        # Fill in any missing (None) source attribute in the planned dispatch list.
+        if any(not src for src in all_sources):
+            source = self._persistent_data.last_seen_planned_dispatch_source
+            _LOGGER.debug(
+                "Missing planned dispatch source in Octopus API response%s",
+                f", assuming '{source}'" if source else "",
+            )
+            if source:
+                for dispatch in dispatches:
+                    meta = dispatch.get("meta", {})
+                    if meta:
+                        meta["source"] = meta.get("source") or source
 
     def is_smart_charging_enabled(self):
         return not self.data.get('registeredKrakenflexDevice', {}).get('suspended', False)
@@ -172,9 +244,15 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     async def async_cancel_boost_charge(self):
         await self.client.async_cancel_boost_charge(self._account_id)
 
+    async def async_remove_entry(self):
+        """Called when the integration (config entry) is removed from Home Assistant."""
+        await self._store.remove()
+
     async def start(self):
         _LOGGER.debug("Starting OctopusIntelligentSystem")
         await validate_octopus_account(self.client, self._account_id)
+
+        await self._store.load()
 
     async def stop(self):
         _LOGGER.debug("Stopping OctopusIntelligentSystem")

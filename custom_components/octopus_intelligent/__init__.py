@@ -65,3 +65,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _LOGGER.debug("Octopus Intelligent System component setup finished")
     return True
 
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Called when the config entry is removed (the integration is deleted)."""
+    octopus_system: OctopusIntelligentSystem = (
+        hass.data[DOMAIN][entry.entry_id][OCTOPUS_SYSTEM]
+    )
+    try:
+        await octopus_system.async_remove_entry()
+    except Exception as ex:  # pylint: disable=broad-exception-caught
+        _LOGGER.error(ex)

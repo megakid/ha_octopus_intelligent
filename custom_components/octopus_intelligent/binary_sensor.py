@@ -2,6 +2,7 @@ from gc import callbacks
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
@@ -9,12 +10,18 @@ from homeassistant.helpers.event import (
     async_track_utc_time_change
 )
 from .const import DOMAIN, OCTOPUS_SYSTEM
-from homeassistant.core import callback
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.util import slugify
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
     async_add_entities([
         OctopusIntelligentSlot(
             hass, 
@@ -44,7 +51,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             hass, 
             hass.data[DOMAIN][config_entry.entry_id][OCTOPUS_SYSTEM],
             "Octopus Intelligent Planned Dispatch Slot")
-    ], True)
+    ], False)  # False: data was already fetched by __init__.py async_setup_entry()
 
 
 class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):

@@ -152,7 +152,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     async def async_set_target_soc(self, target_soc: int):
         target_time_str = self.get_target_time()
         if target_time_str is None:
-            _LOGGER.warn("Octopus Intelligent System could not set target SOC because data is available yet")
+            _LOGGER.warn("Octopus Intelligent System could not set target SOC because data is not available yet")
             return
         target_time = to_hours_after_midnight(target_time_str)
         await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc)
@@ -161,7 +161,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     async def async_set_target_time(self, target_time: str):
         target_soc = self.get_target_soc()
         if (target_soc is None):
-            _LOGGER.warn("Octopus Intelligent System could not set target time because data is available yet")
+            _LOGGER.warn("Octopus Intelligent System could not set target time because data is not available yet")
             return
         target_time = to_hours_after_midnight(target_time)
         await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc)

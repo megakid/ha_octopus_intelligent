@@ -1,7 +1,7 @@
 """Support for Octopus Intelligent Tariff in the UK."""
 from datetime import timedelta, datetime, timezone
+import asyncio
 import logging
-import async_timeout
 
 import homeassistant.util.dt as dt_util
 
@@ -49,7 +49,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         try:
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
-            async with async_timeout.timeout(90):
+            async with asyncio.timeout(90):
                 return await self.client.async_get_combined_state(self._account_id)
         # except ApiAuthError as err:
         #     # Raising ConfigEntryAuthFailed will cancel future updates

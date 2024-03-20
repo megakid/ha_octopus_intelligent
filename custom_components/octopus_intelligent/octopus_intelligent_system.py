@@ -1,6 +1,6 @@
 """Support for Octopus Intelligent Tariff in the UK."""
 from datetime import timedelta, datetime, timezone
-from typing import Any, override
+from typing import Any
 import asyncio
 import logging
 
@@ -43,7 +43,6 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     def account_id(self):
         return self._account_id
 
-    @override
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API endpoint.
 

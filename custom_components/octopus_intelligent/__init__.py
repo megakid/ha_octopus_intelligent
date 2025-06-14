@@ -66,6 +66,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload Octopus Intelligent config entry."""
+    _LOGGER.debug("Unloading Octopus Intelligent System component")
+    
+    # Unload platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    
+    if unload_ok:
+        # Clean up the system instance
+        if entry.entry_id in hass.data[DOMAIN]:
+            octopus_system: OctopusIntelligentSystem = (
+                hass.data[DOMAIN][entry.entry_id].get(OCTOPUS_SYSTEM)
+            )
+            if octopus_system:
+                try:
+                    await octopus_system.async_remove_entry()
+                except Exception as ex:  # pylint: disable=broad-exception-caught
+                    _LOGGER.error("Error during unload: %s", ex)
+            
+            # Remove the entry data
+            hass.data[DOMAIN].pop(entry.entry_id)
+    
+    _LOGGER.debug("Octopus Intelligent System component unload finished")
+    return unload_ok
+
+
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Called when the config entry is removed (the integration is deleted)."""
     octopus_system: OctopusIntelligentSystem = (

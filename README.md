@@ -27,6 +27,6 @@ NOTE: It has come to my attention that, when outside core offpeak hours (2330 ->
 1. Add repository to HACS (see https://hacs.xyz/docs/faq/custom_repositories) - use "https://github.com/megakid/ha_octopus_intelligent" as the repository URL.
 2. Install the `octopus_intelligent` integration inside HACS (You do NOT need to restart despite HACS saying so)
 3. Goto Integrations page and add "Octopus Intelligent Tariff" integration as with any other integration
-4. Follow config steps (Your octopus api key and account id can be found here: https://octopus.energy/dashboard/developer/)
+4. Follow config steps (Your Octopus API key can be found here: https://octopus.energy/dashboard/developer/ and your account ID is the string starting `A-` displayed near the top of your Octopus account page)
 
 NOTE: Your api_key and account_id is stored strictly within your Home Assistant and does not get stored elsewhere.  It is only sent directly to the official Octopus API to exchange it for a authentication token necessary to use the API.

@@ -121,9 +121,6 @@ class OctopusEnergyGraphQLClient:
         raise e
 
   async def __async_set_charge_preferences(self, session, account_id: str, readyByHoursAfterMidnight: float, targetSocPercent: int):
-    """Sets the charging preferences for the given account"""
-    # round up to nearest 5
-    targetSocPercent = 5 * math.ceil(round(targetSocPercent) / 5)
     # round up to nearest 0.5
     readyByHoursAfterMidnight = 0.5 * round(readyByHoursAfterMidnight / 0.5)
 

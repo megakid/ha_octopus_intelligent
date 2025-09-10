@@ -139,21 +139,33 @@ class OctopusEnergyGraphQLClient:
 
     targetTime = f"{readyByHoursAfterMidnightHours:02}:{readyByHoursAfterMidnightMinutes:02}"
 
-    # Execute single query
-    query = gql(
-    '''
-      mutation setVehicleChargePreferences($accountNumber: String!, $targetTime: String!, $targetSocPercent: Int!) {
-        setVehicleChargePreferences(input: { accountNumber: $accountNumber, weekdayTargetTime: $targetTime, weekendTargetTime: $targetTime, weekdayTargetSoc: $targetSocPercent, weekendTargetSoc: $targetSocPercent }) {
-          krakenflexDevice {
-            krakenflexDeviceId
-          }
-        }
-      }
-    ''')
+    # Retrieve device id for the account
+    device_id = await self.__async_get_device_id(session, account_id)
+    if device_id is None:
+      raise Exception('Failed to find intelligent device id for account')
 
-    params = {"accountNumber": account_id, "targetTime": targetTime, "targetSocPercent": targetSocPercent}
-    result = await session.execute(query, variable_values=params, operation_name="setVehicleChargePreferences")
-    return result['setVehicleChargePreferences']
+    # Build schedules for all days using provided time and percentage
+    days_of_week = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+    schedules = ", ".join(list(map(lambda day: f"{{\n  dayOfWeek: {day}\n  time: \"{targetTime}\"\n  max: {targetSocPercent}\n}}", days_of_week)))
+
+    # Execute single query using new mutation
+    query_str = f'''
+      mutation setDevicePreferences($deviceId: ID!) {{
+        setDevicePreferences(input: {{
+          deviceId: $deviceId
+          mode: CHARGE
+          unit: PERCENTAGE
+          schedules: [{schedules}]
+        }}) {{
+          id
+        }}
+      }}
+    '''
+    query = gql(query_str)
+
+    params = {"deviceId": device_id}
+    result = await session.execute(query, variable_values=params, operation_name="setDevicePreferences")
+    return result['setDevicePreferences']
     
   async def __async_trigger_boost_charge(self, session, account_id: str):
     """Triggers a boost charge for the given account"""
@@ -307,42 +319,78 @@ class OctopusEnergyGraphQLClient:
     return result
 
 
+  async def __async_get_device_id(self, session, account_id: str):
+    """Retrieve the new device id for intelligent device for use with mutations."""
+    # Prefer new devices query, fallback to krakenflexDeviceId
+    try:
+      query = gql(
+      '''
+        query getDevices($accountNumber: String!) {
+          devices(accountNumber: $accountNumber) {
+            id
+            deviceType
+            status { current }
+            __typename
+          }
+        }
+      ''')
+
+      params = {"accountNumber": account_id}
+      result = await session.execute(query, variable_values=params, operation_name="getDevices")
+      devices = result['devices'] if result is not None and 'devices' in result else []
+      for device in devices:
+        if device is not None and device.get('deviceType') == 'ELECTRIC_VEHICLES' and device.get('status', {}).get('current') == 'LIVE':
+          return device.get('id')
+    except Exception:
+      pass
+
+    # Fallback to legacy device id if available (may not work with new mutations)
+    info = await self.__async_get_device_info(session, account_id)
+    return info['krakenflexDeviceId'] if info is not None and 'krakenflexDeviceId' in info else None
+
+
 
   async def __async_suspend_smart_charging(self, session, account_id: str):
     """Suspends smart charging for the given account"""
-    # Execute single query
+    # Retrieve device id for the account
+    device_id = await self.__async_get_device_id(session, account_id)
+    if device_id is None:
+      raise Exception('Failed to find intelligent device id for account')
+
+    # Execute single query using new mutation
     query = gql(
     '''      
-      mutation suspendControl($accountNumber: String!) {
-        suspendControl(input: { accountNumber: $accountNumber }) {
-          krakenflexDevice {
-            krakenflexDeviceId
-          }
+      mutation updateDeviceSmartControl($deviceId: ID!) {
+        updateDeviceSmartControl(input: { deviceId: $deviceId, action: SUSPEND }) {
+          id
         }
       }
     ''')
 
-    params = {"accountNumber": account_id}
-    result = await session.execute(query, variable_values=params, operation_name="suspendControl")
-    return result['suspendControl']
+    params = {"deviceId": device_id}
+    result = await session.execute(query, variable_values=params, operation_name="updateDeviceSmartControl")
+    return result['updateDeviceSmartControl']
 
 
   async def __async_resume_smart_charging(self, session, account_id: str):
     """Resumes smart charging for the given account"""
-    # Execute single query
+    # Retrieve device id for the account
+    device_id = await self.__async_get_device_id(session, account_id)
+    if device_id is None:
+      raise Exception('Failed to find intelligent device id for account')
+
+    # Execute single query using new mutation
     query = gql(
     '''      
-      mutation resumeControl($accountNumber: String!) {
-        resumeControl(input: { accountNumber: $accountNumber }) {
-          krakenflexDevice {
-            krakenflexDeviceId
-          }
+      mutation updateDeviceSmartControl($deviceId: ID!) {
+        updateDeviceSmartControl(input: { deviceId: $deviceId, action: UNSUSPEND }) {
+          id
         }
       }
     ''')
 
-    params = {"accountNumber": account_id}
-    result = await session.execute(query, variable_values=params, operation_name="resumeControl")
-    return result['resumeControl']
+    params = {"deviceId": device_id}
+    result = await session.execute(query, variable_values=params, operation_name="updateDeviceSmartControl")
+    return result['updateDeviceSmartControl']
 
 

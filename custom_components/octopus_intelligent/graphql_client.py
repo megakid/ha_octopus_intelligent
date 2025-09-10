@@ -96,7 +96,7 @@ class OctopusEnergyGraphQLClient:
       return self._session
 
     token = await self.__async_get_token()
-    headers = {"Authorization": f"JWT {token}"}
+    headers = {"Authorization": token}
     transport = AIOHTTPTransport(url=self._base_url, headers=headers)
 
     # Using `async with` on the client will start a connection on the transport

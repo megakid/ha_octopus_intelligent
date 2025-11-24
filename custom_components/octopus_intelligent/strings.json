@@ -1,7 +1,9 @@
 {
   "config": {
     "abort": {
-      "already_configured": "Already configured"
+      "already_configured": "Already configured",
+      "no_devices_found": "No Octopus Intelligent devices found on this account.",
+      "cannot_fetch_devices": "Could not fetch devices from Octopus API."
     },
     "error": {
       "cannot_connect": "Failed to connect, please try again.",
@@ -19,6 +21,13 @@
           "offpeak_end": "Offpeak End (normally 05:30)"
         },
         "title": "Octopus Intelligent"
+      },
+      "device": {
+        "title": "Select Device",
+        "description": "Please select the Intelligent device you want to control.",
+        "data": {
+            "device_id": "Device"
+        }
       }
     }
   },

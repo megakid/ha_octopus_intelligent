@@ -19,7 +19,7 @@ from .util import *
 _LOGGER = logging.getLogger(__name__)
 
 class OctopusIntelligentSystem(DataUpdateCoordinator):
-    def __init__(self, hass, *, api_key, account_id, off_peak_start, off_peak_end):
+    def __init__(self, hass, *, api_key, account_id, off_peak_start, off_peak_end, device_id=None):
         super().__init__(
             hass,
             _LOGGER,
@@ -31,6 +31,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         self._hass = hass
         self._api_key = api_key
         self._account_id = account_id
+        self._device_id = device_id
 
         self._off_peak_start = off_peak_start
         self._off_peak_end = off_peak_end
@@ -42,6 +43,10 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     @property
     def account_id(self):
         return self._account_id
+
+    @property
+    def device_id(self):
+        return self._device_id
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API endpoint.
@@ -132,9 +137,9 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     def is_smart_charging_enabled(self):
         return not self.data.get('registeredKrakenflexDevice', {}).get('suspended', False)
     async def async_suspend_smart_charging(self):
-        await self.client.async_suspend_smart_charging(self._account_id)
+        await self.client.async_suspend_smart_charging(self._account_id, self._device_id)
     async def async_resume_smart_charging(self):
-        await self.client.async_resume_smart_charging(self._account_id)
+        await self.client.async_resume_smart_charging(self._account_id, self._device_id)
 
     def is_boost_charging_now(self):
         return self.is_charging_now('bump-charge')
@@ -226,7 +231,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
             _LOGGER.warn("Octopus Intelligent System could not set target SOC because data is not available yet")
             return
         target_time = to_hours_after_midnight(target_time_str)
-        await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc)
+        await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc, self._device_id)
         await self.async_refresh()
 
     async def async_set_target_time(self, target_time: str):
@@ -235,7 +240,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
             _LOGGER.warn("Octopus Intelligent System could not set target time because data is not available yet")
             return
         target_time = to_hours_after_midnight(target_time)
-        await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc)
+        await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc, self._device_id)
         await self.async_refresh()
 
     async def async_start_boost_charge(self):

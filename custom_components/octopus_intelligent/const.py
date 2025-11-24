@@ -7,6 +7,7 @@ OCTOPUS_SYSTEM: Final = "octopus_system"
 INTELLIGENT_DATA: Final = "intelligent_data"
 
 CONF_ACCOUNT_ID: Final = "account_id"
+CONF_DEVICE_ID: Final = "device_id"
 
 ATTR_NAME = "name"
 ATTR_ACTIVITY = "activity"

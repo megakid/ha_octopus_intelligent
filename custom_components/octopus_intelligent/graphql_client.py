@@ -21,6 +21,10 @@ class OctopusEnergyGraphQLClient:
     """Gets the accounts for the given API key"""
     return await self.__async_execute_with_session(self.__async_get_accounts)
 
+  async def async_get_devices(self, account_id: str):
+    """Gets the devices for the given account"""
+    return await self.__async_execute_with_session(lambda session: self.__async_get_devices(session, account_id))
+
   async def async_get_combined_state(self, account_id: str):
     """Gets the state for the given account"""
     return await self.__async_execute_with_session(lambda session: self.__async_get_combined_state(session, account_id))
@@ -29,13 +33,14 @@ class OctopusEnergyGraphQLClient:
     """Gets the charging preferences for the given account"""
     return await self.__async_execute_with_session(lambda session: self.__async_get_charge_preferences(session, account_id))
 
-  async def async_set_charge_preferences(self, account_id: str, readyByHoursAfterMidnight: float, targetSocPercent: int):
+  async def async_set_charge_preferences(self, account_id: str, readyByHoursAfterMidnight: float, targetSocPercent: int, device_id: str = None):
     """Sets the charging preferences for the given account"""
     return await self.__async_execute_with_session(
       lambda session: self.__async_set_charge_preferences(session, 
         account_id, 
         readyByHoursAfterMidnight, 
-        targetSocPercent))
+        targetSocPercent,
+        device_id))
     
   async def async_trigger_boost_charge(self, account_id: str):
     """Triggers a boost charge for the given account"""
@@ -46,13 +51,13 @@ class OctopusEnergyGraphQLClient:
     return await self.__async_execute_with_session(lambda session: self.__async_cancel_boost_charge(session, account_id))
 
 
-  async def async_suspend_smart_charging(self, account_id: str):
+  async def async_suspend_smart_charging(self, account_id: str, device_id: str = None):
     """Suspends smart charging for the given account"""
-    return await self.__async_execute_with_session(lambda session: self.__async_suspend_smart_charging(session, account_id))
+    return await self.__async_execute_with_session(lambda session: self.__async_suspend_smart_charging(session, account_id, device_id))
 
-  async def async_resume_smart_charging(self, account_id: str):
+  async def async_resume_smart_charging(self, account_id: str, device_id: str = None):
     """Resumes smart charging for the given account"""
-    return await self.__async_execute_with_session(lambda session: self.__async_resume_smart_charging(session, account_id))
+    return await self.__async_execute_with_session(lambda session: self.__async_resume_smart_charging(session, account_id, device_id))
 
   async def async_get_device_info(self, account_id: str):
     """Gets the device info for the given account"""
@@ -120,7 +125,7 @@ class OctopusEnergyGraphQLClient:
       except Exception as e:
         raise e
 
-  async def __async_set_charge_preferences(self, session, account_id: str, readyByHoursAfterMidnight: float, targetSocPercent: int):
+  async def __async_set_charge_preferences(self, session, account_id: str, readyByHoursAfterMidnight: float, targetSocPercent: int, device_id: str = None):
     """Sets the charging preferences for the given account"""
     # round up to nearest 5
     targetSocPercent = 5 * math.ceil(round(targetSocPercent) / 5)
@@ -139,8 +144,10 @@ class OctopusEnergyGraphQLClient:
 
     targetTime = f"{readyByHoursAfterMidnightHours:02}:{readyByHoursAfterMidnightMinutes:02}"
 
-    # Retrieve device id for the account
-    device_id = await self.__async_get_device_id(session, account_id)
+    # Retrieve device id for the account if not provided
+    if device_id is None:
+      device_id = await self.__async_get_device_id(session, account_id)
+
     if device_id is None:
       raise Exception('Failed to find intelligent device id for account')
 
@@ -319,6 +326,32 @@ class OctopusEnergyGraphQLClient:
     return result
 
 
+  async def __async_get_devices(self, session, account_id: str):
+    """Retrieve all intelligent devices for account."""
+    query = gql(
+    '''
+      query getDevices($accountNumber: String!) {
+        devices(accountNumber: $accountNumber) {
+          id
+          deviceType
+          status { current }
+          vehicleMake
+          vehicleModel
+        }
+      }
+    ''')
+
+    params = {"accountNumber": account_id}
+    result = await session.execute(query, variable_values=params, operation_name="getDevices")
+    devices = result['devices'] if result is not None and 'devices' in result else []
+    
+    valid_devices = []
+    for device in devices:
+        if device is not None and device.get('deviceType') == 'ELECTRIC_VEHICLES' and device.get('status', {}).get('current') == 'LIVE':
+             valid_devices.append(device)
+             
+    return valid_devices
+
   async def __async_get_device_id(self, session, account_id: str):
     """Retrieve the new device id for intelligent device for use with mutations."""
     # Prefer new devices query, fallback to krakenflexDeviceId
@@ -350,10 +383,12 @@ class OctopusEnergyGraphQLClient:
 
 
 
-  async def __async_suspend_smart_charging(self, session, account_id: str):
+  async def __async_suspend_smart_charging(self, session, account_id: str, device_id: str = None):
     """Suspends smart charging for the given account"""
-    # Retrieve device id for the account
-    device_id = await self.__async_get_device_id(session, account_id)
+    # Retrieve device id for the account if not provided
+    if device_id is None:
+        device_id = await self.__async_get_device_id(session, account_id)
+        
     if device_id is None:
       raise Exception('Failed to find intelligent device id for account')
 
@@ -372,10 +407,12 @@ class OctopusEnergyGraphQLClient:
     return result['updateDeviceSmartControl']
 
 
-  async def __async_resume_smart_charging(self, session, account_id: str):
+  async def __async_resume_smart_charging(self, session, account_id: str, device_id: str = None):
     """Resumes smart charging for the given account"""
-    # Retrieve device id for the account
-    device_id = await self.__async_get_device_id(session, account_id)
+    # Retrieve device id for the account if not provided
+    if device_id is None:
+        device_id = await self.__async_get_device_id(session, account_id)
+        
     if device_id is None:
       raise Exception('Failed to find intelligent device id for account')
 

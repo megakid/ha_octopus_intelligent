@@ -17,6 +17,7 @@ import homeassistant.helpers.config_validation as cv
 from .const import (
     DOMAIN,
     CONF_ACCOUNT_ID,
+    CONF_DEVICE_ID,
     CONF_OFFPEAK_START,
     CONF_OFFPEAK_START_DEFAULT,
     CONF_OFFPEAK_END,
@@ -68,20 +69,72 @@ class OctopusIntelligentConfigFlowHandler(config_entries.ConfigFlow, domain=DOMA
                 errors["base"] = "unknown"
             return await self._show_setup_form(errors)
 
-        unique_id = user_input[CONF_ACCOUNT_ID]
+        self.api_key = user_input[CONF_API_KEY]
+        self.account_id = user_input[CONF_ACCOUNT_ID]
+        self.offpeak_start = user_input[CONF_OFFPEAK_START]
+        self.offpeak_end = user_input[CONF_OFFPEAK_END]
 
+        return await self.async_step_device()
+
+    async def async_step_device(self, user_input=None):
+        """Handle the device selection step."""
+        if user_input is None:
+            client = OctopusEnergyGraphQLClient(self.api_key)
+            try:
+                devices = await client.async_get_devices(self.account_id)
+            except Exception as ex:
+                _LOGGER.error("Error fetching devices: %s", ex)
+                return self.async_abort(reason="cannot_fetch_devices")
+
+            if not devices:
+                return self.async_abort(reason="no_devices_found")
+            
+            self.devices_map = {
+                d["id"]: f"{d.get('vehicleMake', 'Unknown')} {d.get('vehicleModel', 'Vehicle')} ({d['id']})"
+                for d in devices
+            }
+            
+            # If only one device, auto-select it
+            if len(self.devices_map) == 1:
+                self.device_id = list(self.devices_map.keys())[0]
+                return await self.async_step_final()
+
+            return self.async_show_form(
+                step_id="device",
+                data_schema=vol.Schema({
+                    vol.Required(CONF_DEVICE_ID): vol.In(self.devices_map)
+                })
+            )
+
+        self.device_id = user_input[CONF_DEVICE_ID]
+        return await self.async_step_final()
+
+    async def async_step_final(self):
+        """Create the config entry."""
+        unique_id = self.device_id
+        
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
+        
+        # Determine title
+        title = ""
+        if hasattr(self, 'devices_map') and self.device_id in self.devices_map:
+            title = self.devices_map[self.device_id]
+        else:
+             # Fallback if devices_map is missing (should not happen normally)
+             title = f"Device {self.device_id}"
 
         return self.async_create_entry(
-            title="",
+            title=title,
             data={
                 CONF_ID: unique_id,
-                CONF_API_KEY: user_input[CONF_API_KEY],
-                CONF_ACCOUNT_ID: user_input[CONF_ACCOUNT_ID],
-                CONF_OFFPEAK_START: user_input[CONF_OFFPEAK_START],
-                CONF_OFFPEAK_END: user_input[CONF_OFFPEAK_END],
-            })
+                CONF_API_KEY: self.api_key,
+                CONF_ACCOUNT_ID: self.account_id,
+                CONF_OFFPEAK_START: self.offpeak_start,
+                CONF_OFFPEAK_END: self.offpeak_end,
+                CONF_DEVICE_ID: self.device_id
+            }
+        )
 
     @staticmethod
     @callback
@@ -117,6 +170,7 @@ class OctopusIntelligentOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_ACCOUNT_ID: user_input[CONF_ACCOUNT_ID],
                     CONF_OFFPEAK_START: user_input[CONF_OFFPEAK_START],
                     CONF_OFFPEAK_END: user_input[CONF_OFFPEAK_END],
+                    CONF_DEVICE_ID: self.config_entry.data.get(CONF_DEVICE_ID),
                 }
                 
                 self.hass.config_entries.async_update_entry(

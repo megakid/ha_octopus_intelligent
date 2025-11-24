@@ -16,6 +16,7 @@ from .const import(
     OCTOPUS_SYSTEM,
 
     CONF_ACCOUNT_ID,
+    CONF_DEVICE_ID,
     CONF_OFFPEAK_START,
     CONF_OFFPEAK_END
 )
@@ -42,7 +43,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         api_key=entry.data[CONF_API_KEY],
         account_id=entry.data[CONF_ACCOUNT_ID],
         off_peak_start=to_timedelta(entry.data[CONF_OFFPEAK_START]),
-        off_peak_end=to_timedelta(entry.data[CONF_OFFPEAK_END])
+        off_peak_end=to_timedelta(entry.data[CONF_OFFPEAK_END]),
+        device_id=entry.data.get(CONF_DEVICE_ID)
     )
 
     try:

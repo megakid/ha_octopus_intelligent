@@ -7,7 +7,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
 from homeassistant.helpers.event import (
-    async_track_utc_time_change
+    async_track_time_change
 )
 from .const import DOMAIN, OCTOPUS_SYSTEM
 from homeassistant.config_entries import ConfigEntry
@@ -66,7 +66,7 @@ class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
         self._is_on = self._is_off_peak()
         
         super().__init__(octopus_system)
-        self._timer = async_track_utc_time_change(
+        self._timer = async_track_time_change(
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
 
     def _is_off_peak(self):
@@ -140,7 +140,7 @@ class OctopusIntelligentPlannedDispatchSlot(CoordinatorEntity, BinarySensorEntit
         self._is_on = self._octopus_system.is_off_peak_charging_now()
         
         super().__init__(octopus_system)
-        self._timer = async_track_utc_time_change(
+        self._timer = async_track_time_change(
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
         
     @callback

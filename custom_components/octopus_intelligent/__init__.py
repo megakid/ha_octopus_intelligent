@@ -27,10 +27,6 @@ PLATFORMS = ["switch", "binary_sensor", "select", "sensor"]
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Octopus Intelligent System integration."""
-
-    if DOMAIN not in hass.data:
-        hass.data[DOMAIN] = {}
-    
     return True
 
 
@@ -50,6 +46,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     except Exception as ex:
         _LOGGER.error("Got error when setting up Octopus Intelligent Integration: %s", ex)
         return False
+
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {}
 
     if entry.entry_id not in hass.data[DOMAIN]:
         hass.data[DOMAIN][entry.entry_id] = {}

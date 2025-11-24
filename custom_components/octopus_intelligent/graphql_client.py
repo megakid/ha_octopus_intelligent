@@ -25,9 +25,9 @@ class OctopusEnergyGraphQLClient:
     """Gets the devices for the given account"""
     return await self.__async_execute_with_session(lambda session: self.__async_get_devices(session, account_id))
 
-  async def async_get_combined_state(self, account_id: str):
+  async def async_get_combined_state(self, account_id: str, device_id: str = None):
     """Gets the state for the given account"""
-    return await self.__async_execute_with_session(lambda session: self.__async_get_combined_state(session, account_id))
+    return await self.__async_execute_with_session(lambda session: self.__async_get_combined_state(session, account_id, device_id))
 
   async def async_get_charge_preferences(self, account_id: str):
     """Gets the charging preferences for the given account"""
@@ -275,8 +275,111 @@ class OctopusEnergyGraphQLClient:
     result = await session.execute(query, variable_values=params, operation_name="registeredKrakenflexDevice")
     return result['registeredKrakenflexDevice']
 
-  async def __async_get_combined_state(self, session, account_id: str):
+  async def __async_get_combined_state(self, session, account_id: str, device_id: str = None):
     """Get the user's account state"""
+    
+    if device_id:
+        # Use new device-specific query
+        query = gql(
+        '''
+        query getDeviceSpecificData($accountNumber: String!, $deviceId: ID!) {
+            devices(accountNumber: $accountNumber, deviceId: $deviceId) {
+                id
+                provider
+                deviceType
+                status { 
+                    current 
+                    isSuspended
+                    suspended
+                }
+                ... on SmartFlexVehicle {
+                    vehicleMake: make
+                    vehicleModel: model
+                    vehicleBatterySizeInKwh: batterySize
+                    chargingPreferences {
+                        weekdayTargetTime
+                        weekdayTargetSoc
+                        weekendTargetTime
+                        weekendTargetSoc
+                    }
+                }
+                ... on SmartFlexChargePoint {
+                    chargePointMake: make
+                    chargePointModel: model
+                    chargePointPowerInKw: powerInKw
+                    chargingPreferences {
+                        weekdayTargetTime
+                        weekdayTargetSoc
+                        weekendTargetTime
+                        weekendTargetSoc
+                    }
+                }
+            }
+            flexPlannedDispatches(deviceId: $deviceId) {
+                startDtUtc: start
+                endDtUtc: end
+                chargeKwh: energyAddedKwh
+                source: type
+            }
+            completedDispatches(accountNumber: $accountNumber) {
+                startDtUtc: start
+                endDtUtc: end
+                chargeKwh: delta
+                meta { 
+                    source
+                    location
+                }
+            }
+        }
+        ''')
+        
+        params = {"accountNumber": account_id, "deviceId": device_id}
+        result = await session.execute(query, variable_values=params, operation_name="getDeviceSpecificData")
+        
+        # Transform to match old structure
+        devices = result.get('devices', [])
+        device = devices[0] if devices else {}
+        
+        # Try to find charging preferences in fragments
+        charging_preferences = device.get('chargingPreferences', {})
+
+        # Map to registeredKrakenflexDevice format
+        registered_device = {
+            "krakenflexDeviceId": device.get('id'),
+            "provider": device.get('provider'),
+            "vehicleMake": device.get('vehicleMake'),
+            "vehicleModel": device.get('vehicleModel'),
+            "vehicleBatterySizeInKwh": device.get('vehicleBatterySizeInKwh'),
+            "chargePointMake": device.get('chargePointMake'),
+            "chargePointModel": device.get('chargePointModel'),
+            "chargePointPowerInKw": device.get('chargePointPowerInKw'),
+            "status": device.get('status', {}).get('current'),
+            "suspended": device.get('status', {}).get('isSuspended', device.get('status', {}).get('suspended')),
+            "hasToken": True, # Assumption
+            "createdAt": None # Not available in this query
+        }
+
+        # Map flexPlannedDispatches to plannedDispatches format
+        planned_dispatches = []
+        for disp in result.get('flexPlannedDispatches', []):
+            planned_dispatches.append({
+                "startDtUtc": disp.get('startDtUtc'),
+                "endDtUtc": disp.get('endDtUtc'),
+                "chargeKwh": disp.get('chargeKwh'),
+                "meta": {
+                    "source": disp.get('source'),
+                    "location": None 
+                }
+            })
+
+        return {
+            "vehicleChargingPreferences": charging_preferences,
+            "registeredKrakenflexDevice": registered_device,
+            "plannedDispatches": planned_dispatches,
+            "completedDispatches": result.get('completedDispatches', [])
+        }
+
+    # Fallback to old query if no device_id
     query = gql(
     '''
         query getCombinedData($accountNumber: String!) {
@@ -335,8 +438,15 @@ class OctopusEnergyGraphQLClient:
           id
           deviceType
           status { current }
-          vehicleMake
-          vehicleModel
+          
+          ... on SmartFlexVehicle {
+            vehicleMake: make
+            vehicleModel: model
+          }
+          ... on SmartFlexChargePoint {
+            chargePointMake: make
+            chargePointModel: model
+          }
         }
       }
     ''')
@@ -348,6 +458,11 @@ class OctopusEnergyGraphQLClient:
     valid_devices = []
     for device in devices:
         if device is not None and device.get('deviceType') == 'ELECTRIC_VEHICLES' and device.get('status', {}).get('current') == 'LIVE':
+             # Normalize make/model
+             make = device.get('vehicleMake') or device.get('chargePointMake') or 'Unknown'
+             model = device.get('vehicleModel') or device.get('chargePointModel') or 'Vehicle'
+             device['vehicleMake'] = make
+             device['vehicleModel'] = model
              valid_devices.append(device)
              
     return valid_devices

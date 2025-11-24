@@ -92,7 +92,7 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
             async with asyncio.timeout(90):
-                data = await self.client.async_get_combined_state(self._account_id)
+                data = await self.client.async_get_combined_state(self._account_id, self._device_id)
                 self._update_planned_dispatch_sources(data)
                 return data
         # except ApiAuthError as err:
@@ -182,8 +182,8 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
 
         for state in self.data.get('plannedDispatches', []):
             if state.get('meta', {}).get('source', '') == 'smart-charge':
-                startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
-                endUtc = datetime.strptime(state.get('endDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
+                startUtc = dt_util.parse_datetime(state.get('startDtUtc')).astimezone(timezone.utc)
+                endUtc = dt_util.parse_datetime(state.get('endDtUtc')).astimezone(timezone.utc)
                 all_offpeak_ranges.append({"start": startUtc, "end": endUtc})
 
         # merge overlapping ones:
@@ -201,8 +201,8 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         utcnow = dt_util.utcnow() + timedelta(minutes=minutes_offset)
         for state in self.data.get('plannedDispatches', []):
             if source is None or state.get('meta', {}).get('source', '') == source:
-                startUtc = datetime.strptime(state.get('startDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
-                endUtc = datetime.strptime(state.get('endDtUtc'), '%Y-%m-%d %H:%M:%S%z').astimezone(timezone.utc)
+                startUtc = dt_util.parse_datetime(state.get('startDtUtc')).astimezone(timezone.utc)
+                endUtc = dt_util.parse_datetime(state.get('endDtUtc')).astimezone(timezone.utc)
                 if startUtc <= utcnow <= endUtc:
                     return True
         return False

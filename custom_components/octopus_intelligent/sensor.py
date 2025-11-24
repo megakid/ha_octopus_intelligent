@@ -8,7 +8,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import (
-    async_track_time_change
+    async_track_utc_time_change
 )
 from .const import DOMAIN, OCTOPUS_SYSTEM
 from homeassistant.config_entries import ConfigEntry
@@ -42,7 +42,7 @@ class OctopusIntelligentNextOffpeakTime(CoordinatorEntity, SensorEntity):
         self._name = "Octopus Intelligent Next Offpeak Start"
         self._unique_id = slugify(self._name)
         self._octopus_system = octopus_system
-        self._timer = async_track_time_change(
+        self._timer = async_track_utc_time_change(
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
         
         self._attributes = {}
@@ -120,7 +120,7 @@ class OctopusIntelligentOffpeakEndTime(CoordinatorEntity, SensorEntity):
         self._name = "Octopus Intelligent Offpeak End"
         self._unique_id = slugify(self._name)
         self._octopus_system = octopus_system
-        self._timer = async_track_time_change(
+        self._timer = async_track_utc_time_change(
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
         
         self._attributes = {}

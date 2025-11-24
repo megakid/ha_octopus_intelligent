@@ -39,8 +39,16 @@ class OctopusIntelligentNextOffpeakTime(CoordinatorEntity, SensorEntity):
     def __init__(self, hass, octopus_system) -> None:
         """Initialize the sensor."""
         super().__init__(octopus_system)
-        self._name = "Octopus Intelligent Next Offpeak Start"
-        self._unique_id = slugify(self._name)
+        
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"Octopus Intelligent Next Offpeak Start{device_suffix}"
+        
+        # Keep unique_id consistent but unique per device
+        if octopus_system.device_id:
+             self._unique_id = slugify(f"octopus_intelligent_next_offpeak_start_{octopus_system.device_id}")
+        else:
+             self._unique_id = slugify("Octopus Intelligent Next Offpeak Start")
+             
         self._octopus_system = octopus_system
         self._timer = async_track_utc_time_change(
             hass, self.timer_update, minute=range(0, 60, 30), second=1)
@@ -117,8 +125,16 @@ class OctopusIntelligentOffpeakEndTime(CoordinatorEntity, SensorEntity):
     def __init__(self, hass, octopus_system) -> None:
         """Initialize the sensor."""
         super().__init__(octopus_system)
-        self._name = "Octopus Intelligent Offpeak End"
-        self._unique_id = slugify(self._name)
+        
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"Octopus Intelligent Offpeak End{device_suffix}"
+
+        # Keep unique_id consistent but unique per device
+        if octopus_system.device_id:
+             self._unique_id = slugify(f"octopus_intelligent_offpeak_end_{octopus_system.device_id}")
+        else:
+             self._unique_id = slugify("Octopus Intelligent Offpeak End")
+             
         self._octopus_system = octopus_system
         self._timer = async_track_utc_time_change(
             hass, self.timer_update, minute=range(0, 60, 30), second=1)

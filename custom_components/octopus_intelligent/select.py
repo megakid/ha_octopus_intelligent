@@ -31,8 +31,15 @@ class OctopusIntelligentTargetSoc(CoordinatorEntity, SelectEntity):
     def __init__(self, octopus_system) -> None:
         """Initialize the select."""
         super().__init__(octopus_system)
-        self._unique_id = "octopus_intelligent_target_soc"
-        self._name = "Octopus Target State of Charge"
+        
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"Octopus Target State of Charge{device_suffix}"
+
+        if octopus_system.device_id:
+            self._unique_id = f"octopus_intelligent_target_soc_{octopus_system.device_id}"
+        else:
+             self._unique_id = "octopus_intelligent_target_soc"
+             
         self._octopus_system = octopus_system
 
         self._current_option = None
@@ -108,8 +115,15 @@ class OctopusIntelligentTargetTime(CoordinatorEntity, SelectEntity):
     def __init__(self, octopus_system) -> None:
         """Initialize the select."""
         super().__init__(octopus_system)
-        self._unique_id = "octopus_intelligent_target_time"
-        self._name = "Octopus Target Ready By Time"
+        
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"Octopus Target Ready By Time{device_suffix}"
+
+        if octopus_system.device_id:
+            self._unique_id = f"octopus_intelligent_target_time_{octopus_system.device_id}"
+        else:
+             self._unique_id = "octopus_intelligent_target_time"
+             
         self._octopus_system = octopus_system
 
         self._current_option = None

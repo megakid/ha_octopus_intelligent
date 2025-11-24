@@ -92,10 +92,6 @@ class OctopusIntelligentConfigFlowHandler(config_entries.ConfigFlow, domain=DOMA
 
 class OctopusIntelligentOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Octopus Intelligent integration."""
-    
-    def __init__(self, config_entry):
-        """Initialize Octopus Intelligent options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""

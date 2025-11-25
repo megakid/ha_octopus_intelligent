@@ -42,13 +42,13 @@ class OctopusEnergyGraphQLClient:
         targetSocPercent,
         device_id))
     
-  async def async_trigger_boost_charge(self, account_id: str):
+  async def async_trigger_boost_charge(self, account_id: str, device_id: str = None):
     """Triggers a boost charge for the given account"""
-    return await self.__async_execute_with_session(lambda session: self.__async_trigger_boost_charge(session, account_id))
+    return await self.__async_execute_with_session(lambda session: self.__async_trigger_boost_charge(session, account_id, device_id))
     
-  async def async_cancel_boost_charge(self, account_id: str):
+  async def async_cancel_boost_charge(self, account_id: str, device_id: str = None):
     """Cancels the boost charge for the given account"""
-    return await self.__async_execute_with_session(lambda session: self.__async_cancel_boost_charge(session, account_id))
+    return await self.__async_execute_with_session(lambda session: self.__async_cancel_boost_charge(session, account_id, device_id))
 
 
   async def async_suspend_smart_charging(self, account_id: str, device_id: str = None):
@@ -174,41 +174,51 @@ class OctopusEnergyGraphQLClient:
     result = await session.execute(query, variable_values=params, operation_name="setDevicePreferences")
     return result['setDevicePreferences']
     
-  async def __async_trigger_boost_charge(self, session, account_id: str):
+  async def __async_trigger_boost_charge(self, session, account_id: str, device_id: str = None):
     """Triggers a boost charge for the given account"""
-    # Execute single query
-    query = gql(
-    '''
-      mutation triggerBoostCharge($accountNumber: String!) {
-        triggerBoostCharge(input: { accountNumber: $accountNumber }) {
-          krakenflexDevice {
-            krakenflexDeviceId
-          }
-        }
-      }
-    ''')
-
-    params = {"accountNumber": account_id}
-    result = await session.execute(query, variable_values=params, operation_name="triggerBoostCharge")
-    return result['triggerBoostCharge']
+    # Retrieve device id for the account if not provided
+    if device_id is None:
+        device_id = await self.__async_get_device_id(session, account_id)
         
-  async def __async_cancel_boost_charge(self, session, account_id: str):
-    """Cancels any boost charge currently in progress for the given account"""
-    # Execute single query
+    if device_id is None:
+      raise Exception('Failed to find intelligent device id for account')
+
+    # Execute single query using new mutation
     query = gql(
     '''
-      mutation deleteBoostCharge($accountNumber: String!) {
-        deleteBoostCharge(input: { accountNumber: $accountNumber }) {
-          krakenflexDevice {
-            krakenflexDeviceId
-          }
+      mutation updateBoostCharge($deviceId: ID!) {
+        updateBoostCharge(input: { deviceId: $deviceId, action: BOOST }) {
+          id
         }
       }
     ''')
 
-    params = {"accountNumber": account_id}
-    result = await session.execute(query, variable_values=params, operation_name="deleteBoostCharge")
-    return result['deleteBoostCharge']
+    params = {"deviceId": device_id}
+    result = await session.execute(query, variable_values=params, operation_name="updateBoostCharge")
+    return result['updateBoostCharge']
+        
+  async def __async_cancel_boost_charge(self, session, account_id: str, device_id: str = None):
+    """Cancels any boost charge currently in progress for the given account"""
+    # Retrieve device id for the account if not provided
+    if device_id is None:
+        device_id = await self.__async_get_device_id(session, account_id)
+        
+    if device_id is None:
+      raise Exception('Failed to find intelligent device id for account')
+
+    # Execute single query using new mutation
+    query = gql(
+    '''
+      mutation updateBoostCharge($deviceId: ID!) {
+        updateBoostCharge(input: { deviceId: $deviceId, action: CANCEL }) {
+          id
+        }
+      }
+    ''')
+
+    params = {"deviceId": device_id}
+    result = await session.execute(query, variable_values=params, operation_name="updateBoostCharge")
+    return result['updateBoostCharge']
 
   async def __async_get_accounts(self, session):
     # Execute single query

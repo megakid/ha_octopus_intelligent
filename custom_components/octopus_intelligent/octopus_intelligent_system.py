@@ -244,9 +244,9 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
         await self.async_refresh()
 
     async def async_start_boost_charge(self):
-        await self.client.async_trigger_boost_charge(self._account_id)
+        await self.client.async_trigger_boost_charge(self._account_id, self._device_id)
     async def async_cancel_boost_charge(self):
-        await self.client.async_cancel_boost_charge(self._account_id)
+        await self.client.async_cancel_boost_charge(self._account_id, self._device_id)
 
     async def async_remove_entry(self):
         """Called when the integration (config entry) is removed from Home Assistant."""

@@ -27,8 +27,15 @@ class OctopusIntelligentBumpChargeSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(self, octopus_system) -> None:
         """Initialize the switch."""
         super().__init__(octopus_system)
-        self._unique_id = "octopus_intelligent_bump_charge"
-        self._name = "Octopus Bump Charge"
+        
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"Octopus Bump Charge{device_suffix}"
+        
+        if octopus_system.device_id:
+            self._unique_id = f"octopus_intelligent_bump_charge_{octopus_system.device_id}"
+        else:
+             self._unique_id = "octopus_intelligent_bump_charge"
+             
         self._octopus_system = octopus_system
         self._is_on = octopus_system.is_boost_charging_now()
 
@@ -95,8 +102,15 @@ class OctopusIntelligentSmartChargeSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(self, octopus_system) -> None:
         """Initialize the switch."""
         super().__init__(octopus_system)
-        self._unique_id = "octopus_intelligent_smart_charging"
-        self._name = "Octopus Smart Charging"
+        
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"Octopus Smart Charging{device_suffix}"
+        
+        if octopus_system.device_id:
+            self._unique_id = f"octopus_intelligent_smart_charging_{octopus_system.device_id}"
+        else:
+             self._unique_id = "octopus_intelligent_smart_charging"
+             
         self._octopus_system = octopus_system
         self._is_on = octopus_system.is_smart_charging_enabled()
 

@@ -57,8 +57,14 @@ async def async_setup_entry(
 class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, hass, octopus_system, name : str, store_attributes : bool = False, look_ahead_mins : int = 0) -> None:
         """Initialize the binary sensor."""
-        self._name = name
-        self._unique_id = slugify(name)
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"{name}{device_suffix}"
+        
+        if octopus_system.device_id:
+            self._unique_id = slugify(f"{name}_{octopus_system.device_id}")
+        else:
+            self._unique_id = slugify(name)
+            
         self._octopus_system = octopus_system
         self._store_attributes = store_attributes
         self._look_ahead_mins = look_ahead_mins
@@ -133,8 +139,14 @@ class OctopusIntelligentSlot(CoordinatorEntity, BinarySensorEntity):
 class OctopusIntelligentPlannedDispatchSlot(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, hass, octopus_system, name : str) -> None:
         """Initialize the binary sensor."""
-        self._name = name
-        self._unique_id = slugify(name)
+        device_suffix = f" ({octopus_system.device_id})" if octopus_system.device_id else ""
+        self._name = f"{name}{device_suffix}"
+        
+        if octopus_system.device_id:
+            self._unique_id = slugify(f"{name}_{octopus_system.device_id}")
+        else:
+             self._unique_id = slugify(name)
+             
         self._octopus_system = octopus_system
         self._attributes = {}
         self._is_on = self._octopus_system.is_off_peak_charging_now()

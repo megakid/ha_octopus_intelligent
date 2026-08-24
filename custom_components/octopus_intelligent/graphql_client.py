@@ -61,7 +61,7 @@ class OctopusEnergyGraphQLClient:
 
   async def __async_get_token(self):
     """Gets a new token from the API"""
-    transport = AIOHTTPTransport(url=self._base_url)
+    transport = AIOHTTPTransport(url=self._base_url, ssl=True)
 
     # Using `async with` on the client will start a connection on the transport
     # and provide a `session` variable to execute queries on this connection
@@ -97,7 +97,7 @@ class OctopusEnergyGraphQLClient:
 
     token = await self.__async_get_token()
     headers = {"Authorization": token}
-    transport = AIOHTTPTransport(url=self._base_url, headers=headers)
+    transport = AIOHTTPTransport(url=self._base_url, headers=headers, ssl=True)
 
     # Using `async with` on the client will start a connection on the transport
     # and provide a `session` variable to execute queries on this connection

@@ -6,6 +6,7 @@ import logging
 
 import homeassistant.util.dt as dt_util
 
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -220,12 +221,32 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     def get_target_time(self):
         return self.data.get('vehicleChargingPreferences', {}).get('weekdayTargetTime', None)
 
+    @staticmethod
+    def _is_valid_ready_by_hours(hours: float) -> bool:
+        """Return True if hours-after-midnight is within the GraphQL client's 4–11 range."""
+        return 4 <= hours <= 11
+
     async def async_set_target_soc(self, target_soc: int):
         target_time_str = self.get_target_time()
         if target_time_str is None:
-            _LOGGER.warn("Octopus Intelligent System could not set target SOC because data is not available yet")
-            return
+            _LOGGER.warn(
+                "Octopus Intelligent System could not set target SOC because data is not available yet"
+            )
+            raise HomeAssistantError(
+                "Cannot set target SOC: ready-by time is not available yet. "
+                "Set Ready By Time first."
+            )
         target_time = to_hours_after_midnight(target_time_str)
+        if not self._is_valid_ready_by_hours(target_time):
+            _LOGGER.warn(
+                "Octopus Intelligent System could not set target SOC because "
+                "cached ready-by time %s is outside the valid 4AM–11AM range",
+                target_time_str,
+            )
+            raise HomeAssistantError(
+                f"Cannot set target SOC: cached ready-by time ({target_time_str}) "
+                "is outside the valid 4AM–11AM range. Set Ready By Time first."
+            )
         await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc)
         await self.async_refresh()
 

@@ -220,6 +220,64 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     def get_target_time(self):
         return self.data.get('vehicleChargingPreferences', {}).get('weekdayTargetTime', None)
 
+    _DISPATCH_DT_FMT = "%Y-%m-%d %H:%M:%S%z"
+
+    def _parse_dispatch_datetime(self, value: str):
+        """Parse an Octopus dispatch timestamp into a UTC datetime."""
+        return datetime.strptime(value, self._DISPATCH_DT_FMT).astimezone(timezone.utc)
+
+    def _iter_dispatches(self, key: str, source: str | None = None):
+        """Yield parsed dispatch dicts from plannedDispatches or completedDispatches."""
+        for state in (self.data or {}).get(key, []) or []:
+            meta = state.get("meta") or {}
+            meta_source = meta.get("source") or ""
+            if source is not None and meta_source != source:
+                continue
+            try:
+                start = self._parse_dispatch_datetime(state.get("startDtUtc"))
+                end = self._parse_dispatch_datetime(state.get("endDtUtc"))
+            except (TypeError, ValueError):
+                continue
+            kwh_raw = state.get("chargeKwh")
+            try:
+                kwh = abs(float(kwh_raw)) if kwh_raw is not None else None
+            except (TypeError, ValueError):
+                kwh = None
+            yield {
+                "start": start,
+                "end": end,
+                "kwh": kwh,
+                "source": meta_source or None,
+            }
+
+    def get_planned_charge_slots(self, *, source: str | None = "smart-charge", merge: bool = True):
+        """Return planned charge slots, optionally filtered and merged."""
+        slots = list(self._iter_dispatches("plannedDispatches", source))
+        if merge:
+            return merge_charge_slots(slots)
+        return sorted(slots, key=lambda s: s["start"])
+
+    def get_completed_charge_slots(self, *, source: str | None = "smart-charge", merge: bool = True):
+        """Return completed charge slots, optionally filtered and merged."""
+        slots = list(self._iter_dispatches("completedDispatches", source))
+        if merge:
+            return merge_charge_slots(slots)
+        return sorted(slots, key=lambda s: s["start"])
+
+    def get_smart_charge_schedule_slots(self):
+        """Tonight's smart-charge schedule: completed + planned, merged.
+
+        Combining both keeps the human-readable schedule stable as slots move
+        from plannedDispatches into completedDispatches overnight (#47).
+        """
+        planned = list(self._iter_dispatches("plannedDispatches", "smart-charge"))
+        completed = list(self._iter_dispatches("completedDispatches", "smart-charge"))
+        return merge_charge_slots(planned + completed)
+
+    def has_planned_smart_charge_schedule(self) -> bool:
+        """True when at least one planned smart-charge dispatch exists (#45)."""
+        return any(True for _ in self._iter_dispatches("plannedDispatches", "smart-charge"))
+
     async def async_set_target_soc(self, target_soc: int):
         target_time_str = self.get_target_time()
         if target_time_str is None:

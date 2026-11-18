@@ -10,6 +10,7 @@ from homeassistant.const import (
     CONF_API_KEY,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
 
 from .const import(
     DOMAIN,
@@ -19,6 +20,7 @@ from .const import(
     CONF_OFFPEAK_START,
     CONF_OFFPEAK_END
 )
+from .graphql_util import InvalidAuthError
 from .util import to_timedelta
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,9 +49,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     try:
         await octopus_system.start()
+    except InvalidAuthError as ex:
+        # Retrying cannot fix a bad API key or account number.
+        raise ConfigEntryError(
+            f"Octopus rejected the API key or account number: {ex}"
+        ) from ex
     except Exception as ex:
-        _LOGGER.error("Got error when setting up Octopus Intelligent Integration: %s", ex)
-        return False
+        # Let Home Assistant retry with backoff: Octopus outages are usually transient.
+        raise ConfigEntryNotReady(
+            f"Got error when setting up Octopus Intelligent Integration: {ex}"
+        ) from ex
 
     if entry.entry_id not in hass.data[DOMAIN]:
         hass.data[DOMAIN][entry.entry_id] = {}
@@ -94,9 +103,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Called when the config entry is removed (the integration is deleted)."""
-    octopus_system: OctopusIntelligentSystem = (
-        hass.data[DOMAIN][entry.entry_id][OCTOPUS_SYSTEM]
+    octopus_system: OctopusIntelligentSystem | None = (
+        hass.data.get(DOMAIN, {}).get(entry.entry_id, {}).get(OCTOPUS_SYSTEM)
     )
+    if octopus_system is None:
+        # Setup never completed, so there is nothing to clean up.
+        return
     try:
         await octopus_system.async_remove_entry()
     except Exception as ex:  # pylint: disable=broad-exception-caught

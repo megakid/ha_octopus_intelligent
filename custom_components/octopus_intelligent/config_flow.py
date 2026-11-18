@@ -87,7 +87,7 @@ class OctopusIntelligentConfigFlowHandler(config_entries.ConfigFlow, domain=DOMA
     @callback
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
-        return OctopusIntelligentOptionsFlowHandler(config_entry)
+        return OctopusIntelligentOptionsFlowHandler()
 
 
 class OctopusIntelligentOptionsFlowHandler(config_entries.OptionsFlow):

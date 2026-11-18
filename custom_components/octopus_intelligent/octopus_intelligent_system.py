@@ -6,6 +6,7 @@ import logging
 
 import homeassistant.util.dt as dt_util
 
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -223,16 +224,23 @@ class OctopusIntelligentSystem(DataUpdateCoordinator):
     async def async_set_target_soc(self, target_soc: int):
         target_time_str = self.get_target_time()
         if target_time_str is None:
-            _LOGGER.warn("Octopus Intelligent System could not set target SOC because data is not available yet")
+            _LOGGER.warning("Octopus Intelligent System could not set target SOC because data is not available yet")
             return
         target_time = to_hours_after_midnight(target_time_str)
+        if not 4 <= target_time <= 11:
+            # Octopus reports 00:00 when it has no schedule (e.g. after an API
+            # outage), and the API only accepts a ready-by time of 04:00-11:00.
+            raise HomeAssistantError(
+                f"Cannot set target SOC: the current ready-by time ({target_time_str}) "
+                "is outside 04:00-11:00. Set Ready By Time first."
+            )
         await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc)
         await self.async_refresh()
 
     async def async_set_target_time(self, target_time: str):
         target_soc = self.get_target_soc()
         if (target_soc is None):
-            _LOGGER.warn("Octopus Intelligent System could not set target time because data is not available yet")
+            _LOGGER.warning("Octopus Intelligent System could not set target time because data is not available yet")
             return
         target_time = to_hours_after_midnight(target_time)
         await self.client.async_set_charge_preferences(self._account_id, target_time, target_soc)

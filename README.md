@@ -12,6 +12,9 @@ Octopus Intelligent Home Assistant integration
 * `sensor.octopus_intelligent_next_offpeak_start` - will display the timestamp (UTC) of the next expected offpeak period start time.
 * `sensor.octopus_intelligent_offpeak_end` - will display the timestamp (UTC) of the expected end of current offpeak period (will remain so during the following peak period until a new offpeak period starts)
 
+* `sensor.octopus_intelligent_planned_charge_schedule` - human-readable tonight's smart-charge windows (e.g. `22:30–23:00, 03:30–05:30`, or `none` when empty). Overlapping / back-to-back planned slots are merged. Attributes include `slots` (for charts), `completed_slots`, `bump_slots`, `next_start`, `next_end`, `total_kwh`, and `slot_count`.
+* `binary_sensor.octopus_intelligent_schedule_present` - `on` when Octopus has at least one planned smart-charge dispatch for the account (useful to alert when no schedule was created).
+
 NOTE: It has come to my attention that, when outside core offpeak hours (2330 -> 0530), if your car does not successfully charge during the planned slots then your usage will be billed at peak pricing.  This means that if charging is unreliable then the sensor won't reflect your billing accurately.
 
 * `switch.octopus_intelligent_bump_charge` and `switch.octopus_intelligent_smart_charging` - controls your Octopus Intelligent bump charge and smart charge settings
